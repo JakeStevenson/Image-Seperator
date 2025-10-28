@@ -11,9 +11,11 @@ import json
 import sys
 from pathlib import Path
 from typing import List, Dict, Any
+import cv2
 
 from utils.config import Config
 from core.preprocessor import ImagePreprocessor
+from core.classifier import StrokeClassifier, ContentType
 from utils.image_utils import save_debug_image, draw_contours_on_image, create_visualization_grid
 
 
@@ -113,8 +115,9 @@ def main():
         print(f"Configuration: {Config.to_dict()}")
         print(f"Debug mode: {args.debug}")
     
-    # Initialize preprocessor
+    # Initialize preprocessor and classifier
     preprocessor = ImagePreprocessor()
+    classifier = StrokeClassifier()
     
     try:
         # Run preprocessing pipeline
@@ -124,6 +127,39 @@ def main():
         original_image, processed_image, contours, contour_properties = preprocessor.process_image(
             input_path, verbose=args.verbose
         )
+        
+        # Run classification pipeline
+        if args.verbose:
+            print("\n=== Phase 3: Handwriting vs Diagram Classification ===")
+        
+        classification_results = classifier.classify_contours(contours, original_image, contour_properties)
+        
+        # Separate diagrams from handwriting
+        diagrams = []
+        handwriting = []
+        uncertain = []
+        
+        for i, (content_type, confidence, props) in enumerate(classification_results):
+            contour_info = {
+                'id': i,
+                'contour': contours[i],
+                'properties': props,
+                'classification': content_type.value,
+                'confidence': confidence
+            }
+            
+            if content_type == ContentType.DIAGRAM:
+                diagrams.append(contour_info)
+            elif content_type == ContentType.HANDWRITING:
+                handwriting.append(contour_info)
+            else:
+                uncertain.append(contour_info)
+        
+        if args.verbose:
+            print(f"Classification results:")
+            print(f"  - Diagrams: {len(diagrams)}")
+            print(f"  - Handwriting: {len(handwriting)}")
+            print(f"  - Uncertain: {len(uncertain)}")
         
         # Save debug images if requested
         if args.debug:
@@ -145,37 +181,80 @@ def main():
             contour_vis = draw_contours_on_image(original_image, contours)
             save_debug_image(contour_vis, output_path, "04_contours.png")
             
+            # Save classification visualizations
+            diagram_contours = [d['contour'] for d in diagrams]
+            handwriting_contours = [h['contour'] for h in handwriting]
+            
+            # Diagrams in green
+            diagram_vis = draw_contours_on_image(original_image, diagram_contours, color=(0, 255, 0))
+            save_debug_image(diagram_vis, output_path, "05_diagrams.png")
+            
+            # Handwriting in red
+            handwriting_vis = draw_contours_on_image(original_image, handwriting_contours, color=(0, 0, 255))
+            save_debug_image(handwriting_vis, output_path, "06_handwriting.png")
+            
+            # Combined classification view
+            combined_vis = original_image.copy()
+            cv2.drawContours(combined_vis, diagram_contours, -1, (0, 255, 0), 2)  # Green for diagrams
+            cv2.drawContours(combined_vis, handwriting_contours, -1, (0, 0, 255), 2)  # Red for handwriting
+            if uncertain:
+                uncertain_contours = [u['contour'] for u in uncertain]
+                cv2.drawContours(combined_vis, uncertain_contours, -1, (0, 255, 255), 2)  # Yellow for uncertain
+            save_debug_image(combined_vis, output_path, "07_classification.png")
+            
             # Create processing steps grid
-            debug_images = [original_image, gray_image, thresh_image, processed_image, contour_vis]
-            debug_titles = ["Original", "Grayscale", "Threshold", "Processed", "Contours"]
+            debug_images = [original_image, gray_image, thresh_image, processed_image, 
+                          contour_vis, diagram_vis, handwriting_vis, combined_vis]
+            debug_titles = ["Original", "Grayscale", "Threshold", "Processed", 
+                          "All Contours", "Diagrams", "Handwriting", "Classification"]
             grid = create_visualization_grid(debug_images, debug_titles)
             save_debug_image(grid, output_path, "debug_grid.png")
             
             if args.verbose:
                 print(f"Debug images saved to {output_path}")
         
-        # Create manifest with preprocessing results
+        # Create manifest with classification results
         manifest = {
             "original_file": input_path.name,
             "processing_info": {
                 "total_contours": len(contours),
                 "contours_above_threshold": len([c for c in contour_properties if c['area'] >= Config.MIN_CONTOUR_AREA]),
+                "classification_summary": {
+                    "diagrams": len(diagrams),
+                    "handwriting": len(handwriting),
+                    "uncertain": len(uncertain)
+                },
                 "config": Config.to_dict()
             },
-            "contours": [
+            "classified_contours": [
                 {
-                    "id": i,
-                    "area": props['area'],
-                    "bbox": props['bbox'],
-                    "aspect_ratio": round(props['aspect_ratio'], 3),
-                    "extent": round(props['extent'], 3),
-                    "solidity": round(props['solidity'], 3),
-                    "circularity": round(props['circularity'], 3)
+                    "id": result['id'],
+                    "classification": result['classification'],
+                    "confidence": round(result['confidence'], 3),
+                    "area": result['properties']['area'],
+                    "bbox": result['properties']['bbox'],
+                    "aspect_ratio": round(result['properties']['aspect_ratio'], 3),
+                    "extent": round(result['properties']['extent'], 3),
+                    "solidity": round(result['properties']['solidity'], 3),
+                    "circularity": round(result['properties']['circularity'], 3),
+                    "regularity_score": round(result['properties'].get('regularity_score', 0), 3),
+                    "straightness": round(result['properties'].get('straightness', 0), 3),
+                    "has_straight_lines": result['properties'].get('has_straight_lines', False),
+                    "has_perfect_curves": result['properties'].get('has_perfect_curves', False)
                 }
-                for i, props in enumerate(contour_properties)
+                for result in diagrams + handwriting + uncertain
             ],
-            "diagrams": [],
-            "message": "Phase 2 complete: Image preprocessing and contour detection done. Classification pending."
+            "potential_diagrams": [
+                {
+                    "id": d['id'],
+                    "bbox": d['properties']['bbox'],
+                    "confidence": round(d['confidence'], 3),
+                    "area": d['properties']['area']
+                }
+                for d in diagrams
+            ],
+            "diagrams": [],  # Will be populated in Phase 4 after clustering
+            "message": "Phase 3 complete: Handwriting vs diagram classification done. Clustering and extraction pending."
         }
         
         # Write manifest file
@@ -187,7 +266,7 @@ def main():
             print(f"\nCreated manifest: {manifest_path}")
             print(f"Found {len(contours)} contours for analysis")
         
-        print("Phase 2 complete: Image preprocessing and contour detection ready")
+        print("Phase 3 complete: Handwriting vs diagram classification ready")
         
     except Exception as e:
         print(f"Error during processing: {e}", file=sys.stderr)
