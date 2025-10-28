@@ -12,6 +12,19 @@
       "diagram_clusters": 3,
       "total_diagram_area": 8025.0
     },
+    "extraction_summary": {
+      "total_diagrams": 3,
+      "successful_extractions": 3,
+      "failed_extractions": 0,
+      "success_rate": 1.0,
+      "total_extracted_area": 8025.0,
+      "average_coverage": 0.321,
+      "extracted_files": [
+        "diagram_0.png",
+        "diagram_1.png",
+        "diagram_2.png"
+      ]
+    },
     "config": {
       "min_contour_area": 750,
       "clustering_proximity": 25,
@@ -337,7 +350,17 @@
         1378,
         9
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "extracted": true,
+      "width": 1378,
+      "height": 9,
+      "coverage": 0.332,
+      "content_bbox": [
+        3,
+        3,
+        1372,
+        3
+      ]
     },
     {
       "id": 1,
@@ -348,7 +371,17 @@
         1331,
         9
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "extracted": true,
+      "width": 1331,
+      "height": 9,
+      "coverage": 0.331,
+      "content_bbox": [
+        3,
+        3,
+        1325,
+        3
+      ]
     },
     {
       "id": 2,
@@ -359,8 +392,95 @@
         1322,
         10
       ],
-      "confidence": 1.0
+      "confidence": 1.0,
+      "extracted": true,
+      "width": 1322,
+      "height": 10,
+      "coverage": 0.299,
+      "content_bbox": [
+        3,
+        3,
+        1316,
+        4
+      ]
     }
   ],
-  "message": "Phase 4 complete: Diagram clustering and bounding box detection done. PNG extraction pending."
+  "extraction_results": [
+    {
+      "cluster_id": 0,
+      "filename": "diagram_0.png",
+      "success": true,
+      "bounding_box": [
+        96,
+        2351,
+        1378,
+        9
+      ],
+      "confidence": 1.0,
+      "contour_count": 1,
+      "total_area": 2742.0,
+      "width": 1378,
+      "height": 9,
+      "non_transparent_pixels": 4112,
+      "total_pixels": 12402,
+      "coverage": 0.332,
+      "content_bbox": [
+        3,
+        3,
+        1372,
+        3
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "filename": "diagram_1.png",
+      "success": true,
+      "bounding_box": [
+        103,
+        1730,
+        1331,
+        9
+      ],
+      "confidence": 1.0,
+      "contour_count": 1,
+      "total_area": 2648.0,
+      "width": 1331,
+      "height": 9,
+      "non_transparent_pixels": 3971,
+      "total_pixels": 11979,
+      "coverage": 0.331,
+      "content_bbox": [
+        3,
+        3,
+        1325,
+        3
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "filename": "diagram_2.png",
+      "success": true,
+      "bounding_box": [
+        93,
+        949,
+        1322,
+        10
+      ],
+      "confidence": 1.0,
+      "contour_count": 1,
+      "total_area": 2635.0,
+      "width": 1322,
+      "height": 10,
+      "non_transparent_pixels": 3950,
+      "total_pixels": 13220,
+      "coverage": 0.299,
+      "content_bbox": [
+        3,
+        3,
+        1316,
+        4
+      ]
+    }
+  ],
+  "message": "Phase 5 complete: Diagram extraction and PNG output done. All phases complete!"
 }

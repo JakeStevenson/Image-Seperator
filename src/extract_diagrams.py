@@ -17,6 +17,7 @@ from utils.config import Config
 from core.preprocessor import ImagePreprocessor
 from core.classifier import StrokeClassifier, ContentType
 from core.clusterer import DiagramClusterer
+from core.extractor import DiagramExtractor
 from utils.image_utils import save_debug_image, draw_contours_on_image, create_visualization_grid, draw_bounding_boxes
 
 
@@ -116,10 +117,11 @@ def main():
         print(f"Configuration: {Config.to_dict()}")
         print(f"Debug mode: {args.debug}")
     
-    # Initialize preprocessor, classifier, and clusterer
+    # Initialize all processing modules
     preprocessor = ImagePreprocessor()
     classifier = StrokeClassifier()
     clusterer = DiagramClusterer()
+    extractor = DiagramExtractor()
     
     try:
         # Run preprocessing pipeline
@@ -180,6 +182,23 @@ def main():
                 bbox = cluster.bounding_box
                 print(f"  Cluster {cluster.id}: {len(cluster.contours)} contours, "
                       f"bbox={bbox}, area={cluster.total_area:.0f}, confidence={cluster.confidence:.3f}")
+        
+        # Run extraction pipeline
+        if args.verbose:
+            print("\n=== Phase 5: Diagram Extraction & PNG Output ===")
+        
+        extraction_results = extractor.extract_all_diagrams(
+            original_image, processed_image, diagram_clusters, output_path, verbose=args.verbose
+        )
+        
+        # Create extraction summary
+        extraction_summary = extractor.create_extraction_summary(extraction_results)
+        
+        if args.verbose:
+            print(f"Extraction summary:")
+            print(f"  - Success rate: {extraction_summary['success_rate']:.1%}")
+            print(f"  - Files created: {extraction_summary['extracted_files']}")
+            print(f"  - Total extracted area: {extraction_summary['total_extracted_area']:.0f}px")
         
         # Save debug images if requested
         if args.debug:
@@ -270,6 +289,7 @@ def main():
                     "diagram_clusters": len(diagram_clusters),
                     "total_diagram_area": sum(cluster.total_area for cluster in diagram_clusters)
                 },
+                "extraction_summary": extraction_summary,
                 "config": Config.to_dict()
             },
             "classified_contours": [
@@ -304,14 +324,20 @@ def main():
             ],
             "diagrams": [
                 {
-                    "id": cluster.id,
-                    "file": f"diagram_{cluster.id}.png",
-                    "bbox": cluster.bounding_box,
-                    "confidence": round(cluster.confidence, 3)
+                    "id": result['cluster_id'],
+                    "file": result['filename'],
+                    "bbox": result['bounding_box'],
+                    "confidence": round(result['confidence'], 3),
+                    "extracted": result['success'],
+                    "width": result['width'],
+                    "height": result['height'],
+                    "coverage": result['coverage'],
+                    "content_bbox": result['content_bbox']
                 }
-                for cluster in diagram_clusters
+                for result in extraction_results
             ],
-            "message": "Phase 4 complete: Diagram clustering and bounding box detection done. PNG extraction pending."
+            "extraction_results": extraction_results,
+            "message": "Phase 5 complete: Diagram extraction and PNG output done. All phases complete!"
         }
         
         # Write manifest file
@@ -323,7 +349,7 @@ def main():
             print(f"\nCreated manifest: {manifest_path}")
             print(f"Found {len(contours)} contours for analysis")
         
-        print("Phase 4 complete: Diagram clustering and bounding box detection ready")
+        print("Phase 5 complete: Diagram extraction and PNG output ready")
         
     except Exception as e:
         print(f"Error during processing: {e}", file=sys.stderr)
