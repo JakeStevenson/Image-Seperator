@@ -16,7 +16,8 @@ import cv2
 from utils.config import Config
 from core.preprocessor import ImagePreprocessor
 from core.classifier import StrokeClassifier, ContentType
-from utils.image_utils import save_debug_image, draw_contours_on_image, create_visualization_grid
+from core.clusterer import DiagramClusterer
+from utils.image_utils import save_debug_image, draw_contours_on_image, create_visualization_grid, draw_bounding_boxes
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -115,9 +116,10 @@ def main():
         print(f"Configuration: {Config.to_dict()}")
         print(f"Debug mode: {args.debug}")
     
-    # Initialize preprocessor and classifier
+    # Initialize preprocessor, classifier, and clusterer
     preprocessor = ImagePreprocessor()
     classifier = StrokeClassifier()
+    clusterer = DiagramClusterer()
     
     try:
         # Run preprocessing pipeline
@@ -161,6 +163,24 @@ def main():
             print(f"  - Handwriting: {len(handwriting)}")
             print(f"  - Uncertain: {len(uncertain)}")
         
+        # Run clustering pipeline
+        if args.verbose:
+            print("\n=== Phase 4: Diagram Clustering & Bounding Box Detection ===")
+        
+        diagram_clusters = clusterer.cluster_diagrams(
+            diagrams, handwriting, original_image.shape[:2], verbose=args.verbose
+        )
+        
+        # Ensure non-overlapping bounding boxes
+        diagram_clusters = clusterer.ensure_non_overlapping_boxes(diagram_clusters, verbose=args.verbose)
+        
+        if args.verbose:
+            print(f"Final diagram clusters: {len(diagram_clusters)}")
+            for cluster in diagram_clusters:
+                bbox = cluster.bounding_box
+                print(f"  Cluster {cluster.id}: {len(cluster.contours)} contours, "
+                      f"bbox={bbox}, area={cluster.total_area:.0f}, confidence={cluster.confidence:.3f}")
+        
         # Save debug images if requested
         if args.debug:
             if args.verbose:
@@ -202,18 +222,40 @@ def main():
                 cv2.drawContours(combined_vis, uncertain_contours, -1, (0, 255, 255), 2)  # Yellow for uncertain
             save_debug_image(combined_vis, output_path, "07_classification.png")
             
+            # Save clustering visualizations
+            cluster_bboxes = [cluster.bounding_box for cluster in diagram_clusters]
+            
+            # Bounding boxes visualization
+            bbox_vis = draw_bounding_boxes(original_image, cluster_bboxes, color=(255, 0, 255), thickness=3)
+            save_debug_image(bbox_vis, output_path, "08_bounding_boxes.png")
+            
+            # Combined clusters view (contours + bounding boxes)
+            cluster_vis = original_image.copy()
+            for cluster in diagram_clusters:
+                # Draw contours in green
+                cv2.drawContours(cluster_vis, cluster.contours, -1, (0, 255, 0), 2)
+                # Draw bounding box in magenta
+                x, y, w, h = cluster.bounding_box
+                cv2.rectangle(cluster_vis, (x, y), (x + w, y + h), (255, 0, 255), 3)
+                # Add cluster ID label
+                cv2.putText(cluster_vis, f"C{cluster.id}", (x, y-10), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+            save_debug_image(cluster_vis, output_path, "09_clusters.png")
+            
             # Create processing steps grid
             debug_images = [original_image, gray_image, thresh_image, processed_image, 
-                          contour_vis, diagram_vis, handwriting_vis, combined_vis]
+                          contour_vis, diagram_vis, handwriting_vis, combined_vis,
+                          bbox_vis, cluster_vis]
             debug_titles = ["Original", "Grayscale", "Threshold", "Processed", 
-                          "All Contours", "Diagrams", "Handwriting", "Classification"]
+                          "All Contours", "Diagrams", "Handwriting", "Classification",
+                          "Bounding Boxes", "Clusters"]
             grid = create_visualization_grid(debug_images, debug_titles)
             save_debug_image(grid, output_path, "debug_grid.png")
             
             if args.verbose:
                 print(f"Debug images saved to {output_path}")
         
-        # Create manifest with classification results
+        # Create manifest with clustering results
         manifest = {
             "original_file": input_path.name,
             "processing_info": {
@@ -223,6 +265,10 @@ def main():
                     "diagrams": len(diagrams),
                     "handwriting": len(handwriting),
                     "uncertain": len(uncertain)
+                },
+                "clustering_summary": {
+                    "diagram_clusters": len(diagram_clusters),
+                    "total_diagram_area": sum(cluster.total_area for cluster in diagram_clusters)
                 },
                 "config": Config.to_dict()
             },
@@ -244,17 +290,28 @@ def main():
                 }
                 for result in diagrams + handwriting + uncertain
             ],
-            "potential_diagrams": [
+            "diagram_clusters": [
                 {
-                    "id": d['id'],
-                    "bbox": d['properties']['bbox'],
-                    "confidence": round(d['confidence'], 3),
-                    "area": d['properties']['area']
+                    "id": cluster.id,
+                    "contour_count": len(cluster.contours),
+                    "contour_ids": cluster.contour_ids,
+                    "bounding_box": cluster.bounding_box,
+                    "centroid": [round(cluster.centroid[0], 1), round(cluster.centroid[1], 1)],
+                    "total_area": round(cluster.total_area, 1),
+                    "confidence": round(cluster.confidence, 3)
                 }
-                for d in diagrams
+                for cluster in diagram_clusters
             ],
-            "diagrams": [],  # Will be populated in Phase 4 after clustering
-            "message": "Phase 3 complete: Handwriting vs diagram classification done. Clustering and extraction pending."
+            "diagrams": [
+                {
+                    "id": cluster.id,
+                    "file": f"diagram_{cluster.id}.png",
+                    "bbox": cluster.bounding_box,
+                    "confidence": round(cluster.confidence, 3)
+                }
+                for cluster in diagram_clusters
+            ],
+            "message": "Phase 4 complete: Diagram clustering and bounding box detection done. PNG extraction pending."
         }
         
         # Write manifest file
@@ -266,7 +323,7 @@ def main():
             print(f"\nCreated manifest: {manifest_path}")
             print(f"Found {len(contours)} contours for analysis")
         
-        print("Phase 3 complete: Handwriting vs diagram classification ready")
+        print("Phase 4 complete: Diagram clustering and bounding box detection ready")
         
     except Exception as e:
         print(f"Error during processing: {e}", file=sys.stderr)
