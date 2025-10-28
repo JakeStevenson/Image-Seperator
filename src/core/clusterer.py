@@ -123,15 +123,59 @@ class DiagramClusterer:
         
         return False
     
+    def _boxes_are_connected_by(self, bbox1: Tuple[int, int, int, int], 
+                                 bbox2: Tuple[int, int, int, int],
+                                 connector_bbox: Tuple[int, int, int, int]) -> bool:
+        """Check if two bounding boxes are connected by a connector."""
+        x1, y1, w1, h1 = bbox1
+        x2, y2, w2, h2 = bbox2
+        xc, yc, wc, hc = connector_bbox
+        
+        # Check if connector is spatially between the two boxes and close to both
+        # Use generous threshold for hand-drawn diagrams where arrows may not perfectly touch
+        threshold = 70  # pixels - accommodate hand-drawn spacing variations
+        
+        def overlaps_or_near(b1, bc):
+            x1, y1, w1, h1 = b1
+            xc, yc, wc, hc = bc
+            
+            # Check for overlap or proximity
+            horizontal_close = (xc < x1 + w1 + threshold and xc + wc > x1 - threshold)
+            vertical_close = (yc < y1 + h1 + threshold and yc + hc > y1 - threshold)
+            
+            return horizontal_close and vertical_close
+        
+        # Connector must be close to both boxes
+        close_to_both = overlaps_or_near(bbox1, connector_bbox) and overlaps_or_near(bbox2, connector_bbox)
+        
+        if not close_to_both:
+            return False
+        
+        # Additional check: connector should be spatially between the boxes (not behind both)
+        # This prevents false positives from connectors that happen to be near but not connecting
+        left1, right1 = x1, x1 + w1
+        left2, right2 = x2, x2 + w2
+        leftc, rightc = xc, xc + wc
+        
+        # Check if connector spans between the boxes horizontally
+        spans_between = (
+            (leftc <= right1 + threshold and rightc >= left2 - threshold) or
+            (leftc <= right2 + threshold and rightc >= left1 - threshold)
+        )
+        
+        return spans_between
+    
     def cluster_diagrams(self, diagram_contours: List[Dict], 
+                        connector_contours: List[Dict],
                         handwriting_contours: List[Dict],
                         image_shape: Tuple[int, int],
                         verbose: bool = False) -> List[DiagramCluster]:
         """
-        Cluster diagram contours into groups and create bounding boxes.
+        Cluster diagram contours into groups using proximity and connectors.
         
         Args:
             diagram_contours: List of diagram contour info dicts
+            connector_contours: List of connector contour info dicts (arrows, lines)
             handwriting_contours: List of handwriting contour info dicts
             image_shape: (height, width) of the image
             verbose: Enable verbose output
@@ -143,10 +187,11 @@ class DiagramClusterer:
             return []
         
         if verbose:
-            print(f"Clustering {len(diagram_contours)} diagram contours...")
+            print(f"Clustering {len(diagram_contours)} diagram contours with {len(connector_contours)} connectors...")
         
         # Extract bounding boxes for clustering
         diagram_bboxes = [d['properties']['bbox'] for d in diagram_contours]
+        connector_bboxes = [c['properties']['bbox'] for c in connector_contours]
         handwriting_bboxes = [h['properties']['bbox'] for h in handwriting_contours]
         
         # Create adjacency graph for clustering
@@ -159,6 +204,20 @@ class DiagramClusterer:
                 if self.should_cluster(diagram_bboxes[i], diagram_bboxes[j]):
                     adjacency[i][j] = True
                     adjacency[j][i] = True
+        
+        # Add connections based on connectors (arrows, lines between diagrams)
+        connected_by_connector = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                if not adjacency[i][j]:  # Only check if not already adjacent
+                    for conn_idx, conn_bbox in enumerate(connector_bboxes):
+                        if self._boxes_are_connected_by(diagram_bboxes[i], diagram_bboxes[j], conn_bbox):
+                            adjacency[i][j] = True
+                            adjacency[j][i] = True
+                            connected_by_connector.append((i, j, conn_idx))
+                            if verbose:
+                                print(f"  Connector {conn_idx} bridges diagrams {i} and {j}")
+                            break  # One connector is enough to link them
         
         # Find connected components (clusters)
         visited = [False] * n
@@ -188,7 +247,20 @@ class DiagramClusterer:
                 cluster_contours = [diagram_contours[idx]['contour'] for idx in cluster_contour_ids]
                 cluster_bboxes = [diagram_bboxes[idx] for idx in cluster_contour_ids]
                 
-                # Merge bounding boxes
+                # Find and include connectors that link diagrams in this cluster
+                relevant_connector_indices = set()
+                for (i, j, conn_idx) in connected_by_connector:
+                    if i in cluster_contour_ids and j in cluster_contour_ids:
+                        relevant_connector_indices.add(conn_idx)
+                
+                # Add connector contours and bboxes to the cluster
+                for conn_idx in relevant_connector_indices:
+                    cluster_contours.append(connector_contours[conn_idx]['contour'])
+                    cluster_bboxes.append(connector_bboxes[conn_idx])
+                    if verbose:
+                        print(f"  Including connector {conn_idx} in cluster {cluster_id}")
+                
+                # Merge bounding boxes (now includes connectors)
                 merged_bbox = self.merge_bounding_boxes(cluster_bboxes)
                 
                 # Add padding

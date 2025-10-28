@@ -137,8 +137,9 @@ def main():
         
         classification_results = classifier.classify_contours(contours, original_image, contour_properties)
         
-        # Separate diagrams from handwriting
+        # Separate diagrams from handwriting and connectors
         diagrams = []
+        connectors = []
         handwriting = []
         uncertain = []
         
@@ -153,6 +154,8 @@ def main():
             
             if content_type == ContentType.DIAGRAM:
                 diagrams.append(contour_info)
+            elif content_type == ContentType.CONNECTOR:
+                connectors.append(contour_info)
             elif content_type == ContentType.HANDWRITING:
                 handwriting.append(contour_info)
             else:
@@ -161,6 +164,7 @@ def main():
         if args.verbose:
             print(f"Classification results:")
             print(f"  - Diagrams: {len(diagrams)}")
+            print(f"  - Connectors: {len(connectors)}")
             print(f"  - Handwriting: {len(handwriting)}")
             print(f"  - Uncertain: {len(uncertain)}")
         
@@ -169,7 +173,7 @@ def main():
             print("\n=== Phase 4: Diagram Clustering & Bounding Box Detection ===")
         
         diagram_clusters = clusterer.cluster_diagrams(
-            diagrams, handwriting, original_image.shape[:2], verbose=args.verbose
+            diagrams, connectors, handwriting, original_image.shape[:2], verbose=args.verbose
         )
         
         # Ensure non-overlapping bounding boxes
@@ -190,6 +194,7 @@ def main():
                 "contours_above_threshold": len([c for c in contour_properties if c['area'] >= Config.MIN_CONTOUR_AREA]),
                 "classification_summary": {
                     "diagrams": len(diagrams),
+                    "connectors": len(connectors),
                     "handwriting": len(handwriting),
                     "uncertain": len(uncertain)
                 },
@@ -215,7 +220,7 @@ def main():
                     "has_straight_lines": result['properties'].get('has_straight_lines', False),
                     "has_perfect_curves": result['properties'].get('has_perfect_curves', False)
                 }
-                for result in diagrams + handwriting + uncertain
+                for result in diagrams + connectors + handwriting + uncertain
             ],
             "diagram_clusters": [
                 {

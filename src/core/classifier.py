@@ -22,6 +22,7 @@ class ContentType(Enum):
     """Classification types for detected content."""
     HANDWRITING = "handwriting"
     DIAGRAM = "diagram"
+    CONNECTOR = "connector"  # Arrows, lines connecting diagram elements
     UNCERTAIN = "uncertain"
 
 
@@ -178,6 +179,39 @@ class StrokeClassifier:
             'triangularity': triangularity
         }
     
+    def _is_connector(self, properties: Dict) -> bool:
+        """
+        Detect if contour is a connector (arrow or line between diagram elements).
+        
+        Connectors are:
+        - Elongated (high or low aspect ratio)
+        - Very thin (low extent - fills little of bounding box)
+        - Small to medium area
+        - Relatively simple shape
+        """
+        aspect_ratio = properties['aspect_ratio']
+        area = properties['area']
+        extent = properties['extent']
+        corner_count = properties['corner_count']
+        solidity = properties['solidity']
+        
+        # Connector characteristics (relaxed for hand-drawn arrows)
+        is_elongated = aspect_ratio > 2.5 or aspect_ratio < 0.4
+        is_very_thin = extent < 0.15  # Very thin - key indicator of connectors
+        is_reasonable_size = 400 < area < 2000
+        is_relatively_simple = corner_count <= 12
+        is_sparse = solidity < 0.3  # Sparse/irregular shape (arrows have gaps)
+        
+        # Primary match: elongated + very thin
+        if is_elongated and is_very_thin and is_reasonable_size:
+            return True
+        
+        # Secondary match: elongated + sparse + reasonable size
+        if is_elongated and is_sparse and is_reasonable_size and is_relatively_simple:
+            return True
+            
+        return False
+    
     def _calculate_curvature_variation(self, contour: np.ndarray) -> float:
         """Calculate variation in curvature along the contour."""
         if len(contour) < 5:
@@ -293,7 +327,7 @@ class StrokeClassifier:
     def classify_contour(self, contour: np.ndarray, image: np.ndarray, 
                         properties: Optional[Dict] = None) -> Tuple[ContentType, float]:
         """
-        Classify a single contour as handwriting or diagram.
+        Classify a single contour as handwriting, diagram, or connector.
         
         Returns:
             - ContentType: Classification result
@@ -302,8 +336,16 @@ class StrokeClassifier:
         if properties is None:
             properties = self.analyze_stroke_properties(contour, image)
         
+        # Check for connectors first (arrows, lines between diagrams)
+        if self._is_connector(properties):
+            return ContentType.CONNECTOR, 0.8
+        
         # Extract key features for classification
         area = properties['area']
+        
+        # Hard minimum size cutoff - tiny shapes are never diagrams (likely letters/punctuation)
+        if area < 1000:
+            return ContentType.HANDWRITING, 0.9
         aspect_ratio = properties['aspect_ratio']
         solidity = properties['solidity']
         circularity = properties['circularity']
@@ -321,8 +363,8 @@ class StrokeClassifier:
         # Size-based indicators
         if area > 5000:  # Large shapes more likely to be diagrams
             diagram_indicators += 1
-        elif area < 1500:  # Very small shapes might be punctuation
-            handwriting_indicators += 0.5
+        elif area < 1000:  # Very small shapes - likely letters or punctuation
+            handwriting_indicators += 2  # Strong penalty for tiny shapes
         
         # Shape regularity indicators
         if regularity_score > 0.7:
@@ -369,7 +411,7 @@ class StrokeClassifier:
         
         # Sketch detection - complex shapes that aren't simple lines
         is_complex_shape = (
-            area > 800 and  # Even lower size threshold for smaller sketches
+            area > 1200 and  # Minimum size to avoid individual letters
             0.15 <= aspect_ratio <= 6.0 and  # Even more flexible aspect ratio
             extent > 0.1 and  # More flexible density
             corner_count >= 3 and  # Even lower complexity threshold
@@ -378,6 +420,19 @@ class StrokeClassifier:
         
         if is_complex_shape:
             diagram_indicators += 5  # Very strong indicator for sketches
+        
+        # Sketches with internal details (low extent but reasonable size/complexity)
+        # Example: document shapes with wavy lines inside, detailed diagrams
+        is_detailed_sketch = (
+            area > 1200 and  # Reasonable size - avoid individual letters
+            0.3 <= aspect_ratio <= 3.0 and  # Reasonable proportions
+            corner_count >= 4 and  # Some complexity
+            solidity < 0.15 and  # Very sparse (internal details)
+            extent < 0.1  # Very low extent (lots of empty space)
+        )
+        
+        if is_detailed_sketch:
+            diagram_indicators += 6  # Strong indicator - override low extent penalty
         
         # Simple line detection - reject these
         is_simple_line = (
