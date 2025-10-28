@@ -111,4 +111,4 @@ docker run --rm -e MIN_CONTOUR_AREA=1000 diagram-extractor input.png output/
 
 ## License
 
-This project is for local development use.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
