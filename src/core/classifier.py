@@ -337,12 +337,14 @@ class StrokeClassifier:
         if has_perfect_curves:
             diagram_indicators += 2  # Likely circle/ellipse
         
-        # Aspect ratio indicators
+        # Aspect ratio indicators with line detection
         if 0.8 <= aspect_ratio <= 1.2:  # Square-like
             diagram_indicators += 1
+        elif aspect_ratio > 10 or aspect_ratio < 0.1:  # Extremely elongated - likely lines/rules
+            handwriting_indicators += 2  # Reject as simple lines, not diagrams
         elif aspect_ratio > 5 or aspect_ratio < 0.2:  # Very elongated
             if straightness > 0.8:
-                diagram_indicators += 1  # Likely line/arrow
+                handwriting_indicators += 1  # Likely simple line/rule, not diagram
             else:
                 handwriting_indicators += 1  # Likely text line
         
@@ -364,6 +366,28 @@ class StrokeClassifier:
             diagram_indicators += 1
         elif extent < 0.3:  # Sparse in bounding box
             handwriting_indicators += 1
+        
+        # Sketch detection - complex shapes that aren't simple lines
+        is_complex_shape = (
+            area > 1000 and  # Lower size threshold for smaller sketches
+            0.2 <= aspect_ratio <= 5.0 and  # More flexible aspect ratio
+            extent > 0.15 and  # More flexible density
+            corner_count >= 4 and  # Lower complexity threshold
+            regularity_score < 0.8  # More flexible regularity
+        )
+        
+        if is_complex_shape:
+            diagram_indicators += 3  # Strong indicator for sketches
+        
+        # Simple line detection - reject these
+        is_simple_line = (
+            (aspect_ratio > 8 or aspect_ratio < 0.125) and  # Very elongated
+            straightness > 0.7 and  # Very straight
+            corner_count <= 4  # Simple shape
+        )
+        
+        if is_simple_line:
+            handwriting_indicators += 3  # Strong rejection for simple lines
         
         # Make classification decision
         total_indicators = diagram_indicators + handwriting_indicators

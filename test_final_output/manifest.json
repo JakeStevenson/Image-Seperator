@@ -1,0 +1,443 @@
+{
+  "original_file": "Tech Friday.png",
+  "processing_info": {
+    "total_contours": 13,
+    "contours_above_threshold": 13,
+    "classification_summary": {
+      "diagrams": 6,
+      "handwriting": 7,
+      "uncertain": 0
+    },
+    "clustering_summary": {
+      "diagram_clusters": 2,
+      "total_diagram_area": 42339.0
+    },
+    "extraction_summary": {
+      "total_diagrams": 2,
+      "successful_extractions": 2,
+      "failed_extractions": 0,
+      "success_rate": 1.0,
+      "total_extracted_area": 42339.0,
+      "average_coverage": 0.274,
+      "extracted_files": [
+        "diagram_0.png",
+        "diagram_1.png"
+      ]
+    },
+    "config": {
+      "min_contour_area": 500,
+      "clustering_proximity": 25,
+      "padding": 3,
+      "max_diagrams": 10,
+      "dilation_kernel_size": [
+        3,
+        3
+      ],
+      "adaptive_thresh_block_size": 11,
+      "adaptive_thresh_c": 2,
+      "confidence_threshold": 0.0
+    }
+  },
+  "classified_contours": [
+    {
+      "id": 0,
+      "classification": "diagram",
+      "confidence": 0.714,
+      "area": 1607.5,
+      "bbox": [
+        187,
+        2647,
+        177,
+        48
+      ],
+      "aspect_ratio": 3.688,
+      "extent": 0.189,
+      "solidity": 0.343,
+      "circularity": 0.08,
+      "regularity_score": 0.539,
+      "straightness": 0.203,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 1,
+      "classification": "diagram",
+      "confidence": 0.818,
+      "area": 7019.5,
+      "bbox": [
+        275,
+        2474,
+        181,
+        189
+      ],
+      "aspect_ratio": 0.958,
+      "extent": 0.205,
+      "solidity": 0.33,
+      "circularity": 0.038,
+      "regularity_score": 0.773,
+      "straightness": 0.113,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 2,
+      "classification": "diagram",
+      "confidence": 0.714,
+      "area": 2411.0,
+      "bbox": [
+        314,
+        2459,
+        105,
+        138
+      ],
+      "aspect_ratio": 0.761,
+      "extent": 0.166,
+      "solidity": 0.338,
+      "circularity": 0.071,
+      "regularity_score": 0.673,
+      "straightness": 0.072,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 7,
+      "classification": "diagram",
+      "confidence": 0.833,
+      "area": 3793.0,
+      "bbox": [
+        205,
+        1034,
+        175,
+        37
+      ],
+      "aspect_ratio": 4.73,
+      "extent": 0.586,
+      "solidity": 0.641,
+      "circularity": 0.072,
+      "regularity_score": 0.628,
+      "straightness": 0.037,
+      "has_straight_lines": false,
+      "has_perfect_curves": true
+    },
+    {
+      "id": 9,
+      "classification": "diagram",
+      "confidence": 0.9,
+      "area": 27508.0,
+      "bbox": [
+        142,
+        1006,
+        319,
+        278
+      ],
+      "aspect_ratio": 1.147,
+      "extent": 0.31,
+      "solidity": 0.397,
+      "circularity": 0.024,
+      "regularity_score": 0.797,
+      "straightness": 0.08,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 12,
+      "classification": "diagram",
+      "confidence": 1.0,
+      "area": 44517.5,
+      "bbox": [
+        1119,
+        0,
+        283,
+        211
+      ],
+      "aspect_ratio": 1.341,
+      "extent": 0.746,
+      "solidity": 0.961,
+      "circularity": 0.381,
+      "regularity_score": 0.882,
+      "straightness": 0.067,
+      "has_straight_lines": true,
+      "has_perfect_curves": true
+    },
+    {
+      "id": 3,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 2742.0,
+      "bbox": [
+        99,
+        2354,
+        1372,
+        3
+      ],
+      "aspect_ratio": 457.333,
+      "extent": 0.666,
+      "solidity": 1.0,
+      "circularity": 0.005,
+      "regularity_score": 0.6,
+      "straightness": 0.997,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 4,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 8458.5,
+      "bbox": [
+        1158,
+        1865,
+        257,
+        162
+      ],
+      "aspect_ratio": 1.586,
+      "extent": 0.203,
+      "solidity": 0.328,
+      "circularity": 0.024,
+      "regularity_score": 0.673,
+      "straightness": 0.028,
+      "has_straight_lines": false,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 5,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 2648.0,
+      "bbox": [
+        106,
+        1733,
+        1325,
+        3
+      ],
+      "aspect_ratio": 441.667,
+      "extent": 0.666,
+      "solidity": 1.0,
+      "circularity": 0.005,
+      "regularity_score": 0.6,
+      "straightness": 0.997,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 6,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 3800.0,
+      "bbox": [
+        203,
+        1216,
+        200,
+        30
+      ],
+      "aspect_ratio": 6.667,
+      "extent": 0.633,
+      "solidity": 0.687,
+      "circularity": 0.085,
+      "regularity_score": 0.643,
+      "straightness": 0.042,
+      "has_straight_lines": false,
+      "has_perfect_curves": true
+    },
+    {
+      "id": 8,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 701.0,
+      "bbox": [
+        441,
+        1020,
+        12,
+        167
+      ],
+      "aspect_ratio": 0.072,
+      "extent": 0.35,
+      "solidity": 0.552,
+      "circularity": 0.072,
+      "regularity_score": 0.59,
+      "straightness": 0.476,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 10,
+      "classification": "handwriting",
+      "confidence": 0.714,
+      "area": 2635.0,
+      "bbox": [
+        96,
+        952,
+        1316,
+        4
+      ],
+      "aspect_ratio": 329.0,
+      "extent": 0.501,
+      "solidity": 0.668,
+      "circularity": 0.005,
+      "regularity_score": 0.573,
+      "straightness": 0.995,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    },
+    {
+      "id": 11,
+      "classification": "handwriting",
+      "confidence": 0.6,
+      "area": 2690.5,
+      "bbox": [
+        1112,
+        131,
+        219,
+        123
+      ],
+      "aspect_ratio": 1.78,
+      "extent": 0.1,
+      "solidity": 0.255,
+      "circularity": 0.058,
+      "regularity_score": 0.644,
+      "straightness": 0.095,
+      "has_straight_lines": true,
+      "has_perfect_curves": false
+    }
+  ],
+  "diagram_clusters": [
+    {
+      "id": 0,
+      "contour_count": 2,
+      "contour_ids": [
+        3,
+        4
+      ],
+      "bounding_box": [
+        139,
+        1003,
+        325,
+        284
+      ],
+      "centroid": [
+        301.5,
+        1145.0
+      ],
+      "total_area": 31301.0,
+      "confidence": 0.867
+    },
+    {
+      "id": 1,
+      "contour_count": 3,
+      "contour_ids": [
+        0,
+        1,
+        2
+      ],
+      "bounding_box": [
+        184,
+        2456,
+        275,
+        242
+      ],
+      "centroid": [
+        321.5,
+        2577.0
+      ],
+      "total_area": 11038.0,
+      "confidence": 0.749
+    }
+  ],
+  "diagrams": [
+    {
+      "id": 0,
+      "file": "diagram_0.png",
+      "bbox": [
+        139,
+        1003,
+        325,
+        284
+      ],
+      "confidence": 0.867,
+      "extracted": true,
+      "width": 325,
+      "height": 284,
+      "coverage": 0.364,
+      "content_bbox": [
+        3,
+        3,
+        319,
+        278
+      ]
+    },
+    {
+      "id": 1,
+      "file": "diagram_1.png",
+      "bbox": [
+        184,
+        2456,
+        275,
+        242
+      ],
+      "confidence": 0.749,
+      "extracted": true,
+      "width": 275,
+      "height": 242,
+      "coverage": 0.184,
+      "content_bbox": [
+        3,
+        3,
+        269,
+        236
+      ]
+    }
+  ],
+  "extraction_results": [
+    {
+      "cluster_id": 0,
+      "filename": "diagram_0.png",
+      "success": true,
+      "bounding_box": [
+        139,
+        1003,
+        325,
+        284
+      ],
+      "confidence": 0.8666666666666667,
+      "contour_count": 2,
+      "total_area": 31301.0,
+      "width": 325,
+      "height": 284,
+      "non_transparent_pixels": 33571,
+      "total_pixels": 92300,
+      "coverage": 0.364,
+      "content_bbox": [
+        3,
+        3,
+        319,
+        278
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "filename": "diagram_1.png",
+      "success": true,
+      "bounding_box": [
+        184,
+        2456,
+        275,
+        242
+      ],
+      "confidence": 0.7489177489177489,
+      "contour_count": 3,
+      "total_area": 11038.0,
+      "width": 275,
+      "height": 242,
+      "non_transparent_pixels": 12267,
+      "total_pixels": 66550,
+      "coverage": 0.184,
+      "content_bbox": [
+        3,
+        3,
+        269,
+        236
+      ]
+    }
+  ],
+  "message": "Phase 5 complete: Diagram extraction and PNG output done. All phases complete!"
+}

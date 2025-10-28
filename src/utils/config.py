@@ -8,7 +8,7 @@ class Config:
     """Configuration class for diagram extraction parameters."""
     
     # Image processing parameters
-    MIN_CONTOUR_AREA = int(os.getenv('MIN_CONTOUR_AREA', '750'))
+    MIN_CONTOUR_AREA = int(os.getenv('MIN_CONTOUR_AREA', '500'))  # Lowered to catch smaller sketches
     CLUSTERING_PROXIMITY = int(os.getenv('CLUSTERING_PROXIMITY', '25'))
     PADDING = int(os.getenv('PADDING', '3'))
     MAX_DIAGRAMS = int(os.getenv('MAX_DIAGRAMS', '10'))

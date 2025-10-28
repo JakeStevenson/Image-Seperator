@@ -102,10 +102,24 @@ class DiagramClusterer:
         dx, dy, dw, dh = diagram_bbox
         
         for hx, hy, hw, hh in handwriting_bboxes:
-            # Check for intersection
-            if (dx < hx + hw and dx + dw > hx and 
-                dy < hy + hh and dy + dh > hy):
-                return True
+            # Check for actual overlap (not just proximity)
+            # Add small buffer to avoid rejecting diagrams that are just very close
+            buffer = 5  # pixels
+            if (dx < hx + hw + buffer and dx + dw > hx - buffer and 
+                dy < hy + hh + buffer and dy + dh > hy - buffer):
+                
+                # Calculate overlap area to determine if it's significant
+                overlap_x = max(0, min(dx + dw, hx + hw) - max(dx, hx))
+                overlap_y = max(0, min(dy + dh, hy + hh) - max(dy, hy))
+                overlap_area = overlap_x * overlap_y
+                
+                diagram_area = dw * dh
+                handwriting_area = hw * hh
+                
+                # Only reject if there's very significant overlap (>25% of diagram area)
+                # This allows sketches near text but rejects diagrams that truly overlap
+                if overlap_area > 0.25 * diagram_area:
+                    return True
         
         return False
     
