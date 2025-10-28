@@ -1,15 +1,10 @@
 # Single-stage Docker build for diagram extraction tool
 FROM python:3.11-slim
 
-# Install system dependencies for OpenCV
+# Install system dependencies for OpenCV headless
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgomp1 \
-    libglib2.0-0 \
-    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
