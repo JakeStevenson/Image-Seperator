@@ -12,12 +12,12 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Any
 import cv2
+import numpy as np
 
 from utils.config import Config
 from core.preprocessor import ImagePreprocessor
 from core.classifier import StrokeClassifier, ContentType
 from core.clusterer import DiagramClusterer
-from core.extractor import DiagramExtractor
 from utils.image_utils import save_debug_image, draw_contours_on_image, create_visualization_grid, draw_bounding_boxes
 
 
@@ -117,11 +117,10 @@ def main():
         print(f"Configuration: {Config.to_dict()}")
         print(f"Debug mode: {args.debug}")
     
-    # Initialize all processing modules
+    # Initialize processing modules
     preprocessor = ImagePreprocessor()
     classifier = StrokeClassifier()
     clusterer = DiagramClusterer()
-    extractor = DiagramExtractor()
     
     try:
         # Run preprocessing pipeline
@@ -183,22 +182,127 @@ def main():
                 print(f"  Cluster {cluster.id}: {len(cluster.contours)} contours, "
                       f"bbox={bbox}, area={cluster.total_area:.0f}, confidence={cluster.confidence:.3f}")
         
-        # Run extraction pipeline
+        # Create manifest first (before extraction)
+        manifest = {
+            "original_file": input_path.name,
+            "processing_info": {
+                "total_contours": len(contours),
+                "contours_above_threshold": len([c for c in contour_properties if c['area'] >= Config.MIN_CONTOUR_AREA]),
+                "classification_summary": {
+                    "diagrams": len(diagrams),
+                    "handwriting": len(handwriting),
+                    "uncertain": len(uncertain)
+                },
+                "clustering_summary": {
+                    "diagram_clusters": len(diagram_clusters),
+                    "total_diagram_area": sum(cluster.total_area for cluster in diagram_clusters)
+                },
+                "config": Config.to_dict()
+            },
+            "classified_contours": [
+                {
+                    "id": result['id'],
+                    "classification": result['classification'],
+                    "confidence": round(result['confidence'], 3),
+                    "area": result['properties']['area'],
+                    "bbox": result['properties']['bbox'],
+                    "aspect_ratio": round(result['properties']['aspect_ratio'], 3),
+                    "extent": round(result['properties']['extent'], 3),
+                    "solidity": round(result['properties']['solidity'], 3),
+                    "circularity": round(result['properties']['circularity'], 3),
+                    "regularity_score": round(result['properties'].get('regularity_score', 0), 3),
+                    "straightness": round(result['properties'].get('straightness', 0), 3),
+                    "has_straight_lines": result['properties'].get('has_straight_lines', False),
+                    "has_perfect_curves": result['properties'].get('has_perfect_curves', False)
+                }
+                for result in diagrams + handwriting + uncertain
+            ],
+            "diagram_clusters": [
+                {
+                    "id": cluster.id,
+                    "contour_count": len(cluster.contours),
+                    "contour_ids": cluster.contour_ids,
+                    "bounding_box": cluster.bounding_box,
+                    "centroid": [round(cluster.centroid[0], 1), round(cluster.centroid[1], 1)],
+                    "total_area": round(cluster.total_area, 1),
+                    "confidence": round(cluster.confidence, 3)
+                }
+                for cluster in diagram_clusters
+            ],
+            "diagrams": [
+                {
+                    "id": cluster.id,
+                    "file": f"diagram_{cluster.id}.png",
+                    "bbox": cluster.bounding_box,
+                    "confidence": round(cluster.confidence, 3),
+                    "extracted": False  # Will be updated after extraction
+                }
+                for cluster in diagram_clusters
+            ]
+        }
+        
+        # Write manifest file first
+        manifest_path = output_path / "manifest.json"
+        with open(manifest_path, 'w') as f:
+            json.dump(manifest, f, indent=2)
+        
+        # Run extraction pipeline using manifest
         if args.verbose:
             print("\n=== Phase 5: Diagram Extraction & PNG Output ===")
         
-        extraction_results = extractor.extract_all_diagrams(
-            original_image, processed_image, diagram_clusters, output_path, verbose=args.verbose
-        )
+        # Extract diagrams directly using the data we already have
+        extracted_files = []
+        
+        for cluster in diagram_clusters:
+            diagram_id = cluster.id
+            bbox = cluster.bounding_box
+            filename = f"diagram_{diagram_id}.png"
+            
+            if args.verbose:
+                print(f"Extracting diagram {diagram_id}: {filename}")
+                print(f"  Bounding box: {bbox}")
+            
+            # Extract region directly from original image (no transparency)
+            x, y, w, h = bbox
+            cropped_region = original_image[y:y+h, x:x+w]
+            
+            # Save directly as PNG (preserving original quality and color)
+            output_file = output_path / filename
+            success = cv2.imwrite(str(output_file), cropped_region)
+            
+            if success:
+                extracted_files.append(filename)
+                if args.verbose:
+                    print(f"    Saved: {filename} ({w}x{h})")
+            else:
+                if args.verbose:
+                    print(f"    Failed to save: {filename}")
+        
+        # Update manifest with extraction results
+        manifest["diagrams"] = [
+            {
+                **diagram,
+                "extracted": diagram["file"] in extracted_files
+            }
+            for diagram in manifest["diagrams"]
+        ]
         
         # Create extraction summary
-        extraction_summary = extractor.create_extraction_summary(extraction_results)
+        extraction_summary = {
+            "total_diagrams": len(manifest["diagrams"]),
+            "successful_extractions": len(extracted_files),
+            "failed_extractions": len(manifest["diagrams"]) - len(extracted_files),
+            "success_rate": len(extracted_files) / len(manifest["diagrams"]) if manifest["diagrams"] else 0,
+            "extracted_files": extracted_files
+        }
+        
+        manifest["processing_info"]["extraction_summary"] = extraction_summary
+        manifest["message"] = "Phase 5 complete: Manifest-based diagram extraction done. All phases complete!"
         
         if args.verbose:
             print(f"Extraction summary:")
             print(f"  - Success rate: {extraction_summary['success_rate']:.1%}")
             print(f"  - Files created: {extraction_summary['extracted_files']}")
-            print(f"  - Total extracted area: {extraction_summary['total_extracted_area']:.0f}px")
         
         # Save debug images if requested
         if args.debug:
@@ -274,79 +378,12 @@ def main():
             if args.verbose:
                 print(f"Debug images saved to {output_path}")
         
-        # Create manifest with clustering results
-        manifest = {
-            "original_file": input_path.name,
-            "processing_info": {
-                "total_contours": len(contours),
-                "contours_above_threshold": len([c for c in contour_properties if c['area'] >= Config.MIN_CONTOUR_AREA]),
-                "classification_summary": {
-                    "diagrams": len(diagrams),
-                    "handwriting": len(handwriting),
-                    "uncertain": len(uncertain)
-                },
-                "clustering_summary": {
-                    "diagram_clusters": len(diagram_clusters),
-                    "total_diagram_area": sum(cluster.total_area for cluster in diagram_clusters)
-                },
-                "extraction_summary": extraction_summary,
-                "config": Config.to_dict()
-            },
-            "classified_contours": [
-                {
-                    "id": result['id'],
-                    "classification": result['classification'],
-                    "confidence": round(result['confidence'], 3),
-                    "area": result['properties']['area'],
-                    "bbox": result['properties']['bbox'],
-                    "aspect_ratio": round(result['properties']['aspect_ratio'], 3),
-                    "extent": round(result['properties']['extent'], 3),
-                    "solidity": round(result['properties']['solidity'], 3),
-                    "circularity": round(result['properties']['circularity'], 3),
-                    "regularity_score": round(result['properties'].get('regularity_score', 0), 3),
-                    "straightness": round(result['properties'].get('straightness', 0), 3),
-                    "has_straight_lines": result['properties'].get('has_straight_lines', False),
-                    "has_perfect_curves": result['properties'].get('has_perfect_curves', False)
-                }
-                for result in diagrams + handwriting + uncertain
-            ],
-            "diagram_clusters": [
-                {
-                    "id": cluster.id,
-                    "contour_count": len(cluster.contours),
-                    "contour_ids": cluster.contour_ids,
-                    "bounding_box": cluster.bounding_box,
-                    "centroid": [round(cluster.centroid[0], 1), round(cluster.centroid[1], 1)],
-                    "total_area": round(cluster.total_area, 1),
-                    "confidence": round(cluster.confidence, 3)
-                }
-                for cluster in diagram_clusters
-            ],
-            "diagrams": [
-                {
-                    "id": result['cluster_id'],
-                    "file": result['filename'],
-                    "bbox": result['bounding_box'],
-                    "confidence": round(result['confidence'], 3),
-                    "extracted": result['success'],
-                    "width": result['width'],
-                    "height": result['height'],
-                    "coverage": result['coverage'],
-                    "content_bbox": result['content_bbox']
-                }
-                for result in extraction_results
-            ],
-            "extraction_results": extraction_results,
-            "message": "Phase 5 complete: Diagram extraction and PNG output done. All phases complete!"
-        }
-        
-        # Write manifest file
-        manifest_path = output_path / "manifest.json"
+        # Update final manifest with extraction results
         with open(manifest_path, 'w') as f:
             json.dump(manifest, f, indent=2)
         
         if args.verbose:
-            print(f"\nCreated manifest: {manifest_path}")
+            print(f"\nUpdated manifest: {manifest_path}")
             print(f"Found {len(contours)} contours for analysis")
         
         print("Phase 5 complete: Diagram extraction and PNG output ready")

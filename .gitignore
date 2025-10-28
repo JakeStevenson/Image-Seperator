@@ -68,8 +68,13 @@ Thumbs.db
 
 # Test outputs and sample files
 test_output*/
+test_*/
+debug_*/
 output*/
 examples/output/
+*_output/
+manifest.json
+processed_mask.png
 *.png
 *.jpg
 *.jpeg

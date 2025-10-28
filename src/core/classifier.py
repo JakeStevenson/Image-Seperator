@@ -369,15 +369,15 @@ class StrokeClassifier:
         
         # Sketch detection - complex shapes that aren't simple lines
         is_complex_shape = (
-            area > 1000 and  # Lower size threshold for smaller sketches
-            0.2 <= aspect_ratio <= 5.0 and  # More flexible aspect ratio
-            extent > 0.15 and  # More flexible density
-            corner_count >= 4 and  # Lower complexity threshold
-            regularity_score < 0.8  # More flexible regularity
+            area > 800 and  # Even lower size threshold for smaller sketches
+            0.15 <= aspect_ratio <= 6.0 and  # Even more flexible aspect ratio
+            extent > 0.1 and  # More flexible density
+            corner_count >= 3 and  # Even lower complexity threshold
+            regularity_score < 0.9  # Very flexible regularity
         )
         
         if is_complex_shape:
-            diagram_indicators += 3  # Strong indicator for sketches
+            diagram_indicators += 5  # Very strong indicator for sketches
         
         # Simple line detection - reject these
         is_simple_line = (
@@ -388,6 +388,11 @@ class StrokeClassifier:
         
         if is_simple_line:
             handwriting_indicators += 3  # Strong rejection for simple lines
+        
+        # Additional boost for medium-sized shapes that might be sketches
+        if (area > 1500 and aspect_ratio > 0.3 and aspect_ratio < 3.0 and 
+            extent > 0.2 and not is_simple_line):
+            diagram_indicators += 2  # Boost for potential sketches
         
         # Make classification decision
         total_indicators = diagram_indicators + handwriting_indicators

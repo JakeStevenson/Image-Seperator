@@ -24,12 +24,15 @@ echo "Input: $INPUT_ABS"
 echo "Output: $OUTPUT_ABS"
 
 # Run the Docker container with volume mounts
+# Forward all additional arguments after the first two
+shift 2  # Remove first two arguments (input_file and output_dir)
 docker run --rm \
     -v "$(dirname "$INPUT_ABS"):/input" \
     -v "$OUTPUT_ABS:/output" \
     diagram-extractor \
     "/input/$(basename "$INPUT_ABS")" \
     "/output" \
-    --verbose
+    --verbose \
+    "$@"  # Forward all remaining arguments
 
 echo "Extraction complete!"

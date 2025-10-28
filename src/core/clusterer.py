@@ -116,9 +116,9 @@ class DiagramClusterer:
                 diagram_area = dw * dh
                 handwriting_area = hw * hh
                 
-                # Only reject if there's very significant overlap (>25% of diagram area)
-                # This allows sketches near text but rejects diagrams that truly overlap
-                if overlap_area > 0.25 * diagram_area:
+                # Only reject if there's truly massive overlap (>75% of diagram area)
+                # This allows sketches very close to text but rejects truly overlapping ones
+                if overlap_area > 0.75 * diagram_area:
                     return True
         
         return False
