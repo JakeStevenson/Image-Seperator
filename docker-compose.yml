@@ -1,0 +1,28 @@
+services:
+  # Original CLI service (only runs when explicitly requested)
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/workspace
+    profiles:
+      - cli
+
+  # API service (runs by default)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - SESSION_TTL_HOURS=1
+      - MAX_CONCURRENT_SESSIONS=100
+      - MAX_FILE_SIZE_MB=50
+      - CORS_ORIGINS=*
+    volumes:
+      - api_temp:/tmp/diagram_api
+
+volumes:
+  api_temp:

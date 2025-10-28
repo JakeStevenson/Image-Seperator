@@ -1,0 +1,25 @@
+# Use the existing CLI container as base
+FROM diagram-extractor:latest
+
+# Install API dependencies
+COPY requirements-api.txt .
+RUN pip install -r requirements-api.txt
+
+# Add API layer
+COPY src/api/ /app/src/api/
+
+# Create temp directory for API sessions
+RUN mkdir -p /tmp/diagram_api/sessions
+
+# Expose HTTP port
+EXPOSE 8000
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV API_HOST=0.0.0.0
+ENV API_PORT=8000
+ENV TEMP_DIR=/tmp/diagram_api
+
+# Override the CLI entrypoint and start API server
+ENTRYPOINT []
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
