@@ -23,6 +23,9 @@ class Config:
     # Confidence threshold (return all, consumer filters later)
     CONFIDENCE_THRESHOLD = 0.0
     
+    # Diagram sorting method: 'area' (largest first) or 'reading_order' (top-to-bottom, left-to-right)
+    DIAGRAM_SORTING_METHOD = os.getenv('DIAGRAM_SORTING_METHOD', 'reading_order')
+    
     @classmethod
     def to_dict(cls) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
@@ -34,5 +37,6 @@ class Config:
             'dilation_kernel_size': cls.DILATION_KERNEL_SIZE,
             'adaptive_thresh_block_size': cls.ADAPTIVE_THRESH_BLOCK_SIZE,
             'adaptive_thresh_c': cls.ADAPTIVE_THRESH_C,
-            'confidence_threshold': cls.CONFIDENCE_THRESHOLD
+            'confidence_threshold': cls.CONFIDENCE_THRESHOLD,
+            'diagram_sorting_method': cls.DIAGRAM_SORTING_METHOD
         }

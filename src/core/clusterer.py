@@ -303,8 +303,8 @@ class DiagramClusterer:
                 
                 cluster_id += 1
         
-        # Sort clusters by area (largest first)
-        clusters.sort(key=lambda c: c.total_area, reverse=True)
+        # Sort clusters using the configured method
+        clusters = self.sort_clusters(clusters)
         
         # Limit to max diagrams
         if len(clusters) > self.config.MAX_DIAGRAMS:
@@ -320,6 +320,47 @@ class DiagramClusterer:
             print(f"Created {len(clusters)} diagram clusters")
         
         return clusters
+    
+    def sort_clusters_by_reading_order(self, clusters: List[DiagramCluster]) -> List[DiagramCluster]:
+        """Sort clusters by reading order: top-to-bottom, then left-to-right."""
+        if not clusters:
+            return clusters
+        
+        # Define row height threshold (e.g., 50% of average cluster height)
+        avg_height = sum(c.bounding_box[3] for c in clusters) / len(clusters)
+        row_threshold = avg_height * 0.5
+        
+        # Sort by y-coordinate first (top to bottom)
+        sorted_by_y = sorted(clusters, key=lambda c: c.bounding_box[1])
+        
+        # Group into rows and sort each row left-to-right
+        rows = []
+        current_row = [sorted_by_y[0]]
+        current_y = sorted_by_y[0].bounding_box[1]
+        
+        for cluster in sorted_by_y[1:]:
+            cluster_y = cluster.bounding_box[1]
+            if abs(cluster_y - current_y) <= row_threshold:
+                current_row.append(cluster)
+            else:
+                # Sort current row by x-coordinate and add to rows
+                rows.append(sorted(current_row, key=lambda c: c.bounding_box[0]))
+                current_row = [cluster]
+                current_y = cluster_y
+        
+        # Add final row
+        if current_row:
+            rows.append(sorted(current_row, key=lambda c: c.bounding_box[0]))
+        
+        # Flatten rows back to single list
+        return [cluster for row in rows for cluster in row]
+    
+    def sort_clusters(self, clusters: List[DiagramCluster]) -> List[DiagramCluster]:
+        """Sort clusters using the configured method."""
+        if self.config.DIAGRAM_SORTING_METHOD == 'reading_order':
+            return self.sort_clusters_by_reading_order(clusters)
+        else:  # Default to area-based for backward compatibility
+            return sorted(clusters, key=lambda c: c.total_area, reverse=True)
     
     def ensure_non_overlapping_boxes(self, clusters: List[DiagramCluster], 
                                    verbose: bool = False) -> List[DiagramCluster]:
