@@ -1,5 +1,6 @@
-# Use the existing CLI container as base
-FROM diagram-extractor:latest
+# Use the CLI container as base
+ARG BASE_IMAGE=diagram-extractor:latest
+FROM ${BASE_IMAGE}
 
 # Install API dependencies
 COPY requirements-api.txt .
